@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Speed Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .font-mono {
+            font-family: 'Roboto Mono', monospace;
+        }
+        /* Blinking cursor effect */
+        .cursor {
+            animation: blink 1s step-end infinite;
+        }
+        @keyframes blink {
+            from, to {
+                border-left-color: transparent;
+            }
+            50% {
+                border-left-color: #f59e0b; /* amber-500 */
+            }
+        }
+        /* Custom scrollbar for a cleaner look */
+        #text-display::-webkit-scrollbar {
+            width: 8px;
+        }
+        #text-display::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        #text-display::-webkit-scrollbar-thumb {
+            background-color: #4b5563; /* gray-600 */
+            border-radius: 20px;
+            border: 3px solid #1f2937; /* gray-800 */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white">Typing Speed Test</h1>
+            <p class="text-gray-400 mt-2">How many words can you type in 30 seconds?</p>
+        </header>
+
+        <main id="app-container" class="bg-gray-800 rounded-xl shadow-2xl p-6 md:p-8">
+            
+            <!-- Stats Display -->
+            <div class="flex flex-wrap justify-around items-center mb-6 text-center gap-4">
+                <div class="flex flex-col items-center">
+                    <span class="text-lg font-medium text-gray-400">Time</span>
+                    <span id="timer" class="text-4xl font-bold text-amber-400">30</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-lg font-medium text-gray-400">WPM</span>
+                    <span id="wpm" class="text-4xl font-bold text-teal-400">0</span>
+                </div>
+                <div class="flex flex-col items-center">
+                    <span class="text-lg font-medium text-gray-400">Accuracy</span>
+                    <span id="accuracy" class="text-4xl font-bold text-indigo-400">0</span>
+                </div>
+            </div>
+
+            <!-- Text Display Area -->
+            <div id="text-display-container" class="relative">
+                <div id="text-display" class="font-mono text-xl md:text-2xl leading-relaxed tracking-wide bg-gray-900 p-4 rounded-lg h-36 overflow-y-auto select-none">
+                    <!-- Paragraph will be loaded here by JS -->
+                </div>
+                <!-- This is a hidden input field that captures user typing -->
+                <input type="text" id="text-input" class="absolute top-0 left-0 w-full h-full opacity-0 cursor-default" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            </div>
+
+            <!-- Result Screen -->
+            <div id="result-screen" class="hidden text-center mt-6">
+                <h2 class="text-3xl font-bold text-white">Time's Up!</h2>
+                <div class="mt-4 flex justify-center gap-6">
+                    <div>
+                        <p class="text-gray-400">Final WPM</p>
+                        <p id="final-wpm" class="text-5xl font-bold text-teal-400">0</p>
+                    </div>
+                    <div>
+                        <p class="text-gray-400">Accuracy</p>
+                        <p id="final-accuracy" class="text-5xl font-bold text-indigo-400">0%</p>
+                    </div>
+                </div>
+                 <p id="final-stats" class="text-gray-400 mt-4"></p>
+            </div>
+
+            <!-- Restart Button -->
+            <div class="mt-6 text-center">
+                <button id="restart-btn" class="bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-8 rounded-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-amber-300">
+                    Start Test
+                </button>
+            </div>
+        </main>
+        
+        <footer class="text-center mt-8 text-gray-500">
+            <p>Click on the text area or the "Start Test" button to begin.</p>
+        </footer>
+    </div>
+
+    <script>
+        // DOM Elements
+        const textDisplay = document.getElementById('text-display');
+        const textInput = document.getElementById('text-input');
+        const timerEl = document.getElementById('timer');
+        const wpmEl = document.getElementById('wpm');
+        const accuracyEl = document.getElementById('accuracy');
+        const restartBtn = document.getElementById('restart-btn');
+        const resultScreen = document.getElementById('result-screen');
+        const finalWpmEl = document.getElementById('final-wpm');
+        const finalAccuracyEl = document.getElementById('final-accuracy');
+        const finalStatsEl = document.getElementById('final-stats');
+        const textDisplayContainer = document.getElementById('text-display-container');
+
+        // Paragraphs for the test
+        const paragraphs = [
+            "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet. Learning to type quickly and accurately is a valuable skill in today's digital world. Practice regularly to improve your speed.",
+            "Technology has transformed the way we live and work. From smartphones to artificial intelligence, innovations continue to shape our future. The internet connects billions of people, providing access to information and opportunities like never before.",
+            "To be a successful programmer, one must be a master of debugging. It is the art of finding and fixing errors in code. Patience and a logical mindset are essential. Every bug fixed is a lesson learned on the path to creating robust software.",
+            "The sun dipped below the horizon, painting the sky in hues of orange and purple. A gentle breeze rustled the leaves of the trees, creating a soothing melody. It was a perfect evening to reflect on the day and plan for tomorrow.",
+            "Global warming is a significant challenge facing our planet. Rising temperatures, melting ice caps, and extreme weather events are all consequences. It is crucial for individuals and governments to work together to find sustainable solutions."
+        ];
+
+        // Game State
+        let timer;
+        let timeLeft = 30;
+        let state = 'waiting'; // waiting, running, finished
+        let totalTyped = 0;
+        let correctTyped = 0;
+        let charIndex = 0;
+
+        // --- Event Listeners ---
+        
+        restartBtn.addEventListener('click', initializeGame);
+        textInput.addEventListener('input', handleTyping);
+        // Allow clicking anywhere on the text box to focus the input
+        textDisplayContainer.addEventListener('click', () => textInput.focus());
+
+
+        // --- Game Logic ---
+
+        /**
+         * Initializes or resets the game to its starting state.
+         */
+        function initializeGame() {
+            // Reset state
+            state = 'waiting';
+            timeLeft = 30;
+            charIndex = 0;
+            totalTyped = 0;
+            correctTyped = 0;
+            
+            // Clear any existing timer
+            if (timer) clearInterval(timer);
+
+            // Reset UI
+            resultScreen.classList.add('hidden');
+            textDisplayContainer.classList.remove('hidden');
+            timerEl.textContent = timeLeft;
+            wpmEl.textContent = 0;
+            accuracyEl.textContent = 0;
+            textInput.value = '';
+            textInput.disabled = false;
+            restartBtn.textContent = 'Restart';
+
+            // Load a new paragraph
+            loadNewParagraph();
+            
+            // Focus the input field to start typing
+            textInput.focus();
+        }
+
+        /**
+         * Selects a random paragraph and populates the display area.
+         */
+        function loadNewParagraph() {
+            const randomIndex = Math.floor(Math.random() * paragraphs.length);
+            const paragraph = paragraphs[randomIndex];
+            textDisplay.innerHTML = ''; // Clear previous text
+            
+            // Wrap each character in a span for individual styling
+            paragraph.split('').forEach(char => {
+                const charSpan = document.createElement('span');
+                charSpan.textContent = char;
+                textDisplay.appendChild(charSpan);
+            });
+
+            // Highlight the first character as the current one
+            if (textDisplay.children.length > 0) {
+                textDisplay.children[0].classList.add('cursor');
+            }
+        }
+
+        /**
+         * Handles the user's typing input, updates UI, and manages game state.
+         * @param {Event} e The input event object.
+         */
+        function handleTyping(e) {
+            // Start the timer on the first keypress
+            if (state === 'waiting') {
+                startTimer();
+                state = 'running';
+            }
+
+            if (state !== 'running') return;
+
+            const characters = textDisplay.querySelectorAll('span');
+            const typedChar = e.target.value[charIndex];
+
+            // If input is empty (e.g., user cleared it), do nothing
+            if (typedChar == null) {
+                // This handles backspace logic
+                if (charIndex > 0) {
+                    charIndex--;
+                    totalTyped--; // Decrement total typed on backspace
+                    // Remove previous styling
+                    characters[charIndex].classList.remove('text-green-400', 'text-red-400', 'cursor');
+                    // Add cursor back to current character
+                    characters[charIndex].classList.add('cursor');
+                    // Remove incorrect styling from the character after (if it exists)
+                    if(characters[charIndex+1]) {
+                       characters[charIndex+1].classList.remove('cursor');
+                    }
+                }
+                return;
+            }
+
+            // Check if we've reached the end of the paragraph
+            if (charIndex >= characters.length) {
+                // Game continues until timer runs out
+                return;
+            }
+
+            totalTyped++;
+            const expectedChar = characters[charIndex].textContent;
+
+            // Compare typed character with expected character
+            if (typedChar === expectedChar) {
+                characters[charIndex].classList.add('text-green-400');
+                correctTyped++;
+            } else {
+                characters[charIndex].classList.add('text-red-400');
+            }
+            
+            // Move cursor to the next character
+            characters[charIndex].classList.remove('cursor');
+            charIndex++;
+            if (charIndex < characters.length) {
+                characters[charIndex].classList.add('cursor');
+                // Auto-scroll logic
+                const cursorRect = characters[charIndex].getBoundingClientRect();
+                const displayRect = textDisplay.getBoundingClientRect();
+                if (cursorRect.bottom > displayRect.bottom) {
+                    textDisplay.scrollTop += cursorRect.height;
+                }
+            }
+            
+            // Update live stats
+            updateStats();
+        }
+
+        /**
+         * Starts the 30-second countdown timer.
+         */
+        function startTimer() {
+            timer = setInterval(() => {
+                timeLeft--;
+                timerEl.textContent = timeLeft;
+                if (timeLeft === 0) {
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        /**
+         * Updates the WPM and Accuracy display during the test.
+         */
+        function updateStats() {
+            // Calculate WPM
+            const timeElapsedInMinutes = (30 - timeLeft) / 60;
+            const grossWPM = timeElapsedInMinutes > 0 ? Math.round((totalTyped / 5) / timeElapsedInMinutes) : 0;
+            wpmEl.textContent = grossWPM;
+
+            // Calculate Accuracy
+            const accuracy = totalTyped > 0 ? Math.round((correctTyped / totalTyped) * 100) : 0;
+            accuracyEl.textContent = accuracy;
+        }
+
+        /**
+         * Ends the game, calculates final scores, and shows the result screen.
+         */
+        function endGame() {
+            clearInterval(timer);
+            state = 'finished';
+            textInput.disabled = true;
+
+            // Hide the typing area and show results
+            textDisplayContainer.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+
+            // Final WPM calculation based on correct words
+            const typedText = textDisplay.textContent.substring(0, charIndex);
+            const typedWords = typedText.split(' ').filter(word => word !== '');
+            
+            const originalText = textDisplay.textContent;
+            const originalWords = originalText.split(' ');
+
+            let correctWordsCount = 0;
+            typedWords.forEach((word, index) => {
+                if (word === originalWords[index]) {
+                    correctWordsCount++;
+                }
+            });
+            
+            const finalWPM = correctWordsCount * 2; // (correct words / 30s) * 60s
+            const finalAccuracy = totalTyped > 0 ? Math.round((correctTyped / totalTyped) * 100) : 0;
+            
+            finalWpmEl.textContent = finalWPM;
+            finalAccuracyEl.textContent = `${finalAccuracy}%`;
+            finalStatsEl.textContent = `You typed ${correctTyped} correct characters out of ${totalTyped} total.`;
+        }
+
+        // Initial call to set up the first game
+        initializeGame();
+        // Set initial state to prompt user
+        textDisplay.innerHTML = 'Click the "Start Test" button to begin.';
+        textInput.disabled = true;
+
+    </script>
+
+</body>
+</html>
